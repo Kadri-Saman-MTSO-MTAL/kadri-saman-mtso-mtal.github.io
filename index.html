@@ -13,51 +13,45 @@
       const uid = urlParams.get('uid');
       const appId = urlParams.get('appid');
 
-      // Butonla tetikleme fonksiyonu
-      async function manualPrompt() {
+      // Butonla tetikleme (v16 uyumlu)
+      async function forcePrompt() {
           if (OneSignal.Notifications) {
-              console.log("Manuel izin isteniyor...");
               await OneSignal.Notifications.requestPermission();
           } else {
-              alert("Sistem henüz yüklenmedi, lütfen 2 saniye bekleyip tekrar deneyin.");
+              console.log("SDK henüz hazır değil.");
           }
       }
 
-      OneSignal.push(function() {
-          OneSignal.init({
-              appId: appId,
-              allowLocalhostAsSecureOrigin: true,
-          }).then(async () => {
-              console.log("OneSignal Başlatıldı.");
-              
-              // Kullanıcı eşleştirme
+      OneSignal.push(async function() {
+          try {
+              await OneSignal.init({
+                  appId: appId,
+                  allowLocalhostAsSecureOrigin: true,
+              });
+
               if (uid) {
                   await OneSignal.login(uid);
-                  console.log("ID eşleşti: " + uid);
+                  console.log("Kullanıcı login oldu: " + uid);
               }
 
-              // Otomatik izin kutusunu açmayı dene
-              try {
+              // Otomatik izin istemeyi dene (v16)
+              if (OneSignal.Notifications) {
                   await OneSignal.Notifications.requestPermission();
-              } catch (e) {
-                  console.log("Otomatik kutu engellendi, buton bekleniyor.");
               }
-          });
+          } catch (e) {
+              console.error("OneSignal başlatılamadı:", e);
+          }
       });
     </script>
 </head>
-<body style="text-align:center; font-family:sans-serif; padding:50px; background-color:#f4f4f4; color:#333;">
+<body style="text-align:center; font-family:sans-serif; padding:50px; background-color:#f4f4f4;">
     <div style="background:white; padding:30px; border-radius:15px; box-shadow:0 5px 15px rgba(0,0,0,0.1); display:inline-block; width:90%; max-width:400px;">
         <h2 style="color:#eb4d4b;">🔔 Duyuru Kaydı</h2>
-        <p id="status-text">Lütfen yukarıda çıkan kutucukta <b>"İzin Ver"</b> butonuna basın.</p>
-        
+        <p id="status-text">Lütfen tarayıcıda çıkan <b>"İzin Ver"</b> butonuna basın.</p>
         <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
-        
-        <button onclick="manualPrompt()" style="padding:15px; background:#007bff; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold; width:100%; font-size:16px;">
+        <button onclick="forcePrompt()" style="padding:15px; background:#007bff; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold; width:100%;">
             KUTUCUK GELMEZSE BURAYA TIKLAYIN
         </button>
-        
-        <p style="font-size:11px; color:#999; margin-top:15px;">İşlemden sonra bu pencereyi kapatabilirsiniz.</p>
     </div>
 </body>
 </html>
