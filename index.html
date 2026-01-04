@@ -4,32 +4,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Duyuru Kaydı</title>
-    <!-- OneSignal v16 SDK (en güncel) -->
+    <!-- OneSignal v16 SDK -->
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <script>
-        // URL'den parametreleri al
         const urlParams = new URLSearchParams(window.location.search);
-        const uid = urlParams.get('uid');          // Kullanıcı adı (external_user_id)
-        const appId = urlParams.get('appid');      // OneSignal App ID
+        const uid = urlParams.get('uid');
+        const appId = urlParams.get('appid');
         const role = urlParams.get('role') || "Bilinmiyor";
 
         if (!uid || !appId) {
-            document.body.innerHTML = '<h2 style="color:red; text-align:center; margin-top:100px;">Geçersiz kayıt linki! Lütfen uygulamadan tekrar deneyin.</h2>';
+            document.body.innerHTML = '<h2 style="color:red; text-align:center; margin-top:100px;">Geçersiz kayıt linki!</h2>';
             throw new Error("Geçersiz parametreler");
         }
 
         window.OneSignalDeferred = window.OneSignalDeferred || [];
         OneSignalDeferred.push(async function(OneSignal) {
             try {
-                // OneSignal'ı başlat
                 await OneSignal.init({
                     appId: appId,
-                    allowLocalhostAsSecureOrigin: true, // Test için (production'da kaldırılabilir)
+                    allowLocalhostAsSecureOrigin: true,
+                    serviceWorkerParam: { scope: '/' },
+                    serviceWorkerPath: 'OneSignalSDKWorker.js', // Service worker hatasını önler
                     promptOptions: {
                         slidedown: {
                             enabled: true,
                             autoPrompt: true,
-                            timeDelay: 0,           // Hemen çıksın
+                            timeDelay: 0,
                             pageViews: 1,
                             text: {
                                 actionMessage: "Staj duyuruları ve maaş bildirimlerini anlık almak ister misiniz?",
@@ -37,37 +37,74 @@
                                 cancelButton: "Hayır, Teşekkürler"
                             }
                         }
+                    },
+                    notifyButton: {
+                        enabled: false  // <<< ABONELİKTEN ÇIK BUTONU TAMAMEN KAPATILDI >>>
                     }
                 });
 
-                // Kullanıcıyı login et (external user ID)
+                // Kullanıcıyı login et
                 await OneSignal.login(uid);
 
-                // Rol tag'ini ekle (sunucuda filtreleme için önemli)
+                // Rol tag'i ekle
                 await OneSignal.User.addTag("role", role);
 
-                // Başarılı mesajı göster
+                // Slidedown kabul edildikten sonra native prompt bekleniyor
+                OneSignal.Notifications.addEventListener("permissionChange", (granted) => {
+                    if (granted) {
+                        showSuccessMessage();
+                    }
+                });
+
+                // Hemen başarı mesajını gösterme, native prompt için bekle
                 setTimeout(() => {
-                    document.body.innerHTML = `
-                        <div style="text-align:center; margin-top:100px; color:#2ecc71;">
-                            <h2>✅ Kayıt Başarıyla Tamamlandı!</h2>
-                            <p>Duyuruları ve maaş bildirimlerini alacaksınız.</p>
-                            <p>Bu pencereyi kapatabilirsiniz.</p>
-                        </div>`;
-                }, 4000);
+                    if (!OneSignal.Notifications.permission) {
+                        showPartialSuccessMessage();
+                    }
+                }, 3000);
 
             } catch (e) {
                 console.error("OneSignal hatası:", e);
-                document.body.innerHTML = `<h2 style="color:red; text-align:center;">Hata: ${e.message}</h2>`;
+                showErrorMessage(e.message);
             }
         });
+
+        function showSuccessMessage() {
+            document.body.innerHTML = `
+                <div style="text-align:center; margin-top:100px; color:#2ecc71; font-family:Arial, sans-serif;">
+                    <h2>✅ Kayıt Başarıyla Tamamlandı!</h2>
+                    <p>Duyuruları ve maaş bildirimlerini alacaksınız.</p>
+                    <p><strong>Tarayıcıda çıkan "İzin Ver" kutusuna da bastığınızdan emin olun.</strong></p>
+                    <p>Bu pencereyi güvenle kapatabilirsiniz.</p>
+                </div>`;
+        }
+
+        function showPartialSuccessMessage() {
+            document.body.innerHTML = `
+                <div style="text-align:center; margin-top:100px; color:#f39c12; font-family:Arial, sans-serif;">
+                    <h2>⏳ Kayıt Devam Ediyor...</h2>
+                    <p>Slidedown'a "Evet, İzin Ver" dediniz. Şimdi tarayıcıdan gelen izin kutusuna <strong>"İzin Ver"</strong> basın.</p>
+                    <p style="color:#e74c3c;">Kutu çıkmazsa sayfayı yenileyin veya siteyi Ana Ekrana ekleyip tekrar deneyin.</p>
+                    <p>10 saniye sonra otomatik kapanabilir.</p>
+                </div>`;
+            setTimeout(() => { window.close(); }, 10000);
+        }
+
+        function showErrorMessage(msg) {
+            document.body.innerHTML = `
+                <div style="text-align:center; margin-top:100px; color:red; font-family:Arial, sans-serif;">
+                    <h2>❌ Hata Oluştu</h2>
+                    <p>${msg}</p>
+                    <p>Lütfen sayfayı yenileyip tekrar deneyin.</p>
+                </div>`;
+        }
     </script>
 </head>
 <body style="font-family:Arial, sans-serif; text-align:center; padding:50px; background:#f0f8ff;">
     <div style="background:white; padding:40px; border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,0.1); max-width:500px; margin:0 auto;">
         <h2 style="color:#2ecc71;">🔔 Bildirim Kaydı Yapılıyor...</h2>
-        <p style="font-size:1.2em; margin:30px 0;">Lütfen çıkan <b>"İzin Ver"</b> kutusuna basın.</p>
-        <p><small>Otomatik kapanmazsa bu pencereyi kapatabilirsiniz.</small></p>
+        <p style="font-size:1.2em; margin:30px 0;">Lütfen çıkan <b>"Evet, İzin Ver"</b> butonuna basın.</p>
+        <p><small>iPhone kullanıyorsanız siteyi <b>Ana Ekrana Ekleyin</b> ve oradan açın.</small></p>
     </div>
 </body>
 </html>
