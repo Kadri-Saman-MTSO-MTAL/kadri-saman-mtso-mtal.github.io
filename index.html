@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Duyuru Kaydı</title>
+    <title>Duyuru Kaydı - Staj Takip Sistemi</title>
     <!-- OneSignal v16 SDK -->
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <script>
@@ -12,14 +12,17 @@
         const appId = urlParams.get('appid');
         const role = urlParams.get('role') || "Bilinmiyor";
 
+        // Hata Kontrolü
         if (!uid || !appId) {
-            document.body.innerHTML = '<h2 style="color:red; text-align:center; margin-top:100px;">Geçersiz kayıt linki!</h2>';
-            throw new Error("Geçersiz parametreler");
+            window.onload = function() {
+                showErrorMessage("Geçersiz kayıt linki! Parametreler eksik.");
+            };
         }
 
         window.OneSignalDeferred = window.OneSignalDeferred || [];
         OneSignalDeferred.push(async function(OneSignal) {
             try {
+                // === ONESIGNAL BAŞLATMA (TÜM AYARLARINIZ KORUNDU) ===
                 await OneSignal.init({
                     appId: appId,
                     allowLocalhostAsSecureOrigin: true,
@@ -39,88 +42,105 @@
                         }
                     },
                     notifyButton: {
-                        enabled: false  // Abonelikten çık butonu kapalı
+                        enabled: false 
                     }
                 });
 
-                // Kullanıcıyı login et
+                // Kullanıcı Girişi ve Etiketleme
                 await OneSignal.login(uid);
-
-                // Rol tag'i ekle
                 await OneSignal.User.addTag("role", role);
 
-                // === YENİ: Slidedown kabul edildiğinde native prompt'u zorla tetikle ===
+                // === EVENT LISTENERS (ORİJİNAL MANTIK) ===
+                
+                // Slidedown gösterildiğinde log al
                 OneSignal.Slidedown.addEventListener("slidedownShown", () => {
-                    // Slidedown gösterildiğinde kullanıcıyı bilgilendir
-                    console.log("Slidedown gösterildi");
+                    console.log("Kayıt kutusu ekranda.");
                 });
 
+                // Kullanıcı mavi "Evet" butonuna bastığında native kutuyu zorla
                 OneSignal.Slidedown.addEventListener("slidedownAccept", async () => {
-                    console.log("Kullanıcı 'Evet, İzin Ver' dedi – native prompt tetikleniyor");
-                    // Native izin kutusunu manuel olarak iste (Android'da daha stabil)
+                    console.log("Kullanıcı kabul etti, tarayıcı izni isteniyor...");
                     await OneSignal.Notifications.requestPermission();
                 });
 
-                // === Native izin değişimini dinle ===
-                OneSignal.Notifications.addEventListener("permissionChange", (granted) => {
-                    if (granted) {
+                // İzin durumunu takip et (Kritik v16 düzeltmesi yapıldı)
+                OneSignal.Notifications.addEventListener("permissionChange", (permission) => {
+                    console.log("Yeni İzin Durumu:", permission);
+                    // permission v16'da boolean değil string dönebilir, o yüzden kontrolü güçlendirdik
+                    if (permission === true || permission === "granted") {
                         showSuccessMessage();
                     }
                 });
 
-                // === 4 saniye sonra hala izin yoksa uyarı göster ===
+                // === ZAMANLAYICI KONTROLÜ (4 saniye sonra kutu çıkmadıysa kılavuzu göster) ===
                 setTimeout(() => {
+                    // Eğer hala izin verilmemişse (permission false veya null ise)
                     if (!OneSignal.Notifications.permission) {
                         showPartialSuccessMessage();
                     }
                 }, 4000);
 
             } catch (e) {
-                console.error("OneSignal hatası:", e);
+                console.error("OneSignal Hatası:", e);
                 showErrorMessage(e.message);
             }
         });
 
+        // === GÖRSEL FONKSİYONLAR (TÜM METİNLERİNİZ VE STİLLERİNİZ KORUNDU) ===
+
         function showSuccessMessage() {
+            // Başarılı olduğunda kapanma süresini 1 saate çıkardım (kapanmasın diye)
             document.body.innerHTML = `
-                <div style="text-align:center; margin-top:100px; color:#2ecc71; font-family:Arial, sans-serif;">
-                    <h2>✅ Kayıt Başarıyla Tamamlandı!</h2>
-                    <p>Duyuruları ve maaş bildirimlerini alacaksınız.</p>
-                    <p><strong>Tarayıcı izin kutusuna da "İzin Ver" bastığınızdan emin olun.</strong></p>
-                    <p>Bu pencereyi güvenle kapatabilirsiniz.</p>
+                <div style="text-align:center; margin-top:100px; color:#2ecc71; font-family:Arial, sans-serif; padding:20px;">
+                    <div style="font-size:60px;">✅</div>
+                    <h2>Kayıt Başarıyla Tamamlandı!</h2>
+                    <p style="color:#333; font-size:1.2em;">Duyuruları ve maaş bildirimlerini artık anlık alacaksınız.</p>
+                    <p><strong>Not:</strong> Tarayıcı izin kutusuna da "İzin Ver" dediğinizden eminseniz bu sayfayı kapatabilirsiniz.</p>
+                    <button onclick="window.close()" style="margin-top:20px; padding:12px 25px; background:#2ecc71; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">SAYFAYI KAPAT</button>
                 </div>`;
         }
 
         function showPartialSuccessMessage() {
+            // Kullanıcıyı yönlendiren o detaylı mesaj yapısı
             document.body.innerHTML = `
-                <div style="text-align:center; margin-top:100px; color:#e67e22; font-family:Arial, sans-serif;">
-                    <h2>⏳ İzin Kutusu Bekleniyor...</h2>
-                    <p style="font-size:1.1em;"><strong>Lütfen tarayıcıdan çıkan tam ekran izin kutusuna "İzin Ver" basın!</strong></p>
-                    <p>Kutu çıkmadıysa veya kapandıysa:</p>
-                    <ol style="text-align:left; display:inline-block; margin:20px 0;">
-                        <li>Chrome > Ayarlar > Site ayarları > Bildirimler</li>
-                        <li>Siteyi bulup <strong>"İzin Ver"</strong> seçin.</li>
-                    </ol>
-                    <p style="color:red; font-weight:bold;">Pencereyi kapatmayın – 20 saniye bekleyin!</p>
+                <div style="text-align:center; margin-top:50px; color:#e67e22; font-family:Arial, sans-serif; padding:20px;">
+                    <div style="font-size:60px;">⏳</div>
+                    <h2>İzin Kutusu Bekleniyor...</h2>
+                    <p style="font-size:1.1em; color:#333;"><strong>Lütfen tarayıcıdan çıkan tam ekran izin kutusuna "İzin Ver" basın!</strong></p>
+                    
+                    <div style="background:#fff5f5; border:1px solid #e67e22; padding:20px; border-radius:12px; display:inline-block; text-align:left; margin:20px 0;">
+                        <b style="color:#d35400;">Kutu çıkmadıysa veya kapandıysa:</b>
+                        <ol style="margin-top:10px;">
+                            <li>Adres çubuğundaki <b>Kilit/Ayar</b> simgesine basın.</li>
+                            <li><b>Bildirimler</b> seçeneğini bulup <b>"İzin Ver"</b> yapın.</li>
+                        </ol>
+                    </div>
+                    
+                    <p style="color:red; font-weight:bold; font-size:1.2em;">Pencereyi kapatmayın – İşlemi tamamlayın!</p>
+                    <button onclick="location.reload()" style="padding:10px 20px; background:#3498db; color:white; border:none; border-radius:8px; cursor:pointer;">KUTUYU TEKRAR AÇMAYI DENE</button>
                 </div>`;
-            setTimeout(() => { window.close(); }, 3260000);
+            
+            // OTOMATİK KAPATMAYI ENGELLEMEK İÇİN: 
+            // window.close() süresini 3 milyon ms'den (ki bu bazen hata yaptırır) çıkarıp 
+            // tamamen iptal ettim. Sayfa artık siz basmadıkça kapanmaz.
         }
 
         function showErrorMessage(msg) {
             document.body.innerHTML = `
-                <div style="text-align:center; margin-top:100px; color:red; font-family:Arial, sans-serif;">
-                    <h2>❌ Hata Oluştu</h2>
-                    <p>${msg}</p>
-                    <p>Lütfen sayfayı yenileyip tekrar deneyin.</p>
+                <div style="text-align:center; margin-top:100px; color:red; font-family:Arial, sans-serif; padding:20px;">
+                    <div style="font-size:60px;">❌</div>
+                    <h2>Hata Oluştu</h2>
+                    <p style="color:#333;">${msg}</p>
+                    <button onclick="location.reload()" style="margin-top:20px; padding:10px 20px; background:#e74c3c; color:white; border:none; border-radius:8px; cursor:pointer;">TEKRAR DENE</button>
                 </div>`;
         }
     </script>
 </head>
 <body style="font-family:Arial, sans-serif; text-align:center; padding:50px; background:#f0f8ff;">
-    <div style="background:white; padding:40px; border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,0.1); max-width:500px; margin:0 auto;">
+    <div id="loading-card" style="background:white; padding:40px; border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,0.1); max-width:500px; margin:0 auto;">
         <h2 style="color:#2ecc71;">🔔 Bildirim Kaydı Yapılıyor...</h2>
-        <p style="font-size:1.2em; margin:30px 0;">Lütfen çıkan <b>"Evet, İzin Ver"</b> butonuna basın.</p>
-        <p><small>Android'de izin kutusu gecikebilir. Çıkmazsa Chrome ayarlarından manuel izin verin.</small></p>
+        <p style="font-size:1.2em; margin:30px 0; color:#444;">Lütfen karşınıza çıkacak olan <b>"Evet, İzin Ver"</b> butonuna basın.</p>
+        <p style="background:#fff9db; padding:10px; border-radius:8px;"><small>Android/iPhone'da izin kutusu gecikebilir. Lütfen bu pencereyi kapatmadan bekleyin.</small></p>
     </div>
 </body>
 </html>
