@@ -44,8 +44,8 @@
             }
         });
 
-        // SDK tamamen yüklendiğinde (en güvenilir yöntem)
-        OneSignal.on("sdkLoaded", function() {
+        // SDK init tamamlandığında butonu aktif et (en güvenilir event)
+        OneSignal.on("initCompleted", function() {
             const setupBtn = document.getElementById('setup-btn');
             const statusText = document.getElementById('status-text');
 
