@@ -4,106 +4,119 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Kaydı - Staj Takip</title>
-    <!-- OneSignal v16 SDK -->
-    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-    <script>
-        window.OneSignalDeferred = window.OneSignalDeferred || [];
-        const urlParams = new URLSearchParams(window.location.search);
-        const uid = urlParams.get('uid');
-        const appId = urlParams.get('appid');
-
-        let isStep1Done = false;
-
-        OneSignalDeferred.push(async function(OneSignal) {
-            await OneSignal.init({
-                appId: appId,
-                allowLocalhostAsSecureOrigin: true,
-                serviceWorkerPath: 'OneSignalSDKWorker.js'
-            });
-
-            if (uid) { await OneSignal.login(uid); }
-
-            // Eğer zaten aboneyse doğrudan başarı ekranına geç
-            if (OneSignal.Notifications.permissionNative === "granted") {
-                showSuccess(OneSignal.User.PushSubscription.id);
-            }
-
-            // Abonelik değişimini dinle
-            OneSignal.User.PushSubscription.addEventListener("change", (event) => {
-                if (event.current.id && event.current.token) {
-                    showSuccess(event.current.id);
-                }
-            });
-        });
-
-        // AKILLI MAKRO BUTONU
-        async function runAutoSetup() {
-            const btn = document.getElementById('setup-btn');
-            const statusText = document.getElementById('status-text');
-            
-            try {
-                if (!window.OneSignal) { alert("Sistem yükleniyor, lütfen 2 saniye bekleyin."); return; }
-
-                statusText.innerHTML = "İzinler kontrol ediliyor...";
-                
-                // Durum: Engellenmiş mi?
-                if (OneSignal.Notifications.permissionNative === "denied") {
-                    showFixGuide();
-                    return;
-                }
-
-                // Makro 1: İzin İste
-                statusText.innerHTML = "<b>Lütfen yukarıdaki kutucukta 'İzin Ver' butonuna basın.</b>";
-                const permission = await OneSignal.Notifications.requestPermission();
-                
-                if (permission === "granted") {
-                    statusText.innerHTML = "Tebrikler! Cihazınız tescil ediliyor...";
-                } else if (permission === "denied") {
-                    showFixGuide();
-                }
-
-            } catch (err) {
-                statusText.innerHTML = "Bir hata oluştu: " + err.message;
-            }
-        }
-
-        function showFixGuide() {
-            document.getElementById('main-card').innerHTML = `
-                <h3 style="color:#e74c3c;">⚠️ Bildirimler Engellenmiş</h3>
-                <p style="text-align:left; font-size:14px;">Tarayıcınız bu sitenin bildirim göndermesini engelliyor. Lütfen şu adımları izleyin:</p>
-                <div style="background:#fff5f5; padding:15px; border-radius:10px; text-align:left; border:1px solid #fab1a0;">
-                    <b>1.</b> Adres çubuğundaki <b>Kilit (<i class="fas fa-lock"></i>)</b> veya <b>Ayar</b> simgesine basın.<br>
-                    <b>2.</b> "Bildirimler" seçeneğini bulup <b>AÇIK</b> konuma getirin.<br>
-                    <b>3.</b> Bu sayfayı yenileyip tekrar deneyin.
-                </div>
-                <button onclick="location.reload()" style="margin-top:20px; padding:12px; background:#3498db; color:white; border:none; border-radius:8px; cursor:pointer; width:100%;">DÜZELTTİM, YENİLE</button>
-            `;
-        }
-
-        function showSuccess(subId) {
-            document.getElementById('main-card').innerHTML = `
-                <div style="color:#2ecc71; font-size:60px;">✅</div>
-                <h2 style="color:#2ecc71; margin-top:10px;">Kayıt Başarılı!</h2>
-                <p>Cihazınız sisteme bağlandı.</p>
-                <button onclick="window.close()" style="padding:15px 30px; background:#2ecc71; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold; width:100%;">SİSTEME GERİ DÖN</button>
-            `;
-        }
-    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <!-- OneSignal SDK - defer kaldırıldı, doğrudan yüklensin -->
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" async></script>
 </head>
 <body style="text-align:center; font-family:sans-serif; padding:20px; background-color:#f4f4f4; color:#333;">
     <div id="main-card" style="background:white; padding:40px; border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,0.1); display:inline-block; width:100%; max-width:450px; box-sizing:border-box; margin-top:20px;">
         <div style="font-size:50px; margin-bottom:15px;">🚀</div>
         <h2 style="margin-top:0; color:#2c3e50;">Duyuru Sihirbazı</h2>
         <p id="status-text" style="font-size:15px; min-height:40px;">Sisteme tam erişim sağlamak için aşağıdaki butona tıklayın.</p>
-        
-        <button id="setup-btn" onclick="runAutoSetup()" style="background:#2ecc71; color:white; border:none; padding:20px 25px; border-radius:15px; font-weight:bold; cursor:pointer; width:100%; font-size:20px; margin:20px 0; box-shadow:0 8px 15px rgba(46,204,113,0.3); transition: transform 0.2s;">
+       
+        <button id="setup-btn" style="background:#2ecc71; color:white; border:none; padding:20px 25px; border-radius:15px; font-weight:bold; cursor:pointer; width:100%; font-size:20px; margin:20px 0; box-shadow:0 8px 15px rgba(46,204,113,0.3); transition: transform 0.2s;">
             <i class="fas fa-magic"></i> ABONELİĞİ BAŞLAT
         </button>
-
         <p style="font-size:12px; color:#95a5a6;">
             Bu işlem cihazınızı duyuru sunucularına tescil eder.
         </p>
     </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const uid = urlParams.get('uid');
+        const appId = urlParams.get('appid');
+
+        if (!uid || !appId) {
+            alert("Geçersiz kayıt linki!");
+            window.close();
+        }
+
+        // OneSignal hazır olduğunda çalışacak
+        window.OneSignal = window.OneSignal || [];
+        OneSignal.push(function() {
+            OneSignal.init({
+                appId: appId,
+                allowLocalhostAsSecureOrigin: true,
+                serviceWorkerPath: 'OneSignalSDKWorker.js',
+                notifyButton: {
+                    enabled: false
+                }
+            });
+
+            // Kullanıcı login
+            if (uid) {
+                OneSignal.login(uid);
+            }
+
+            // Buton fonksiyonu
+            document.getElementById('setup-btn').onclick = async function runAutoSetup() {
+                const statusText = document.getElementById('status-text');
+                const btn = document.getElementById('setup-btn');
+                btn.disabled = true;
+                statusText.innerHTML = "İzinler kontrol ediliyor...";
+
+                try {
+                    // Eğer zaten izin verilmişse
+                    if (Notification.permission === "granted") {
+                        showSuccess();
+                        return;
+                    }
+
+                    // Engellenmişse
+                    if (Notification.permission === "denied") {
+                        showFixGuide();
+                        return;
+                    }
+
+                    statusText.innerHTML = "<b>Lütfen çıkan kutucukta 'İzin Ver' butonuna basın.</b>";
+
+                    // Manuel izin iste
+                    const permission = await OneSignal.Notifications.requestPermission();
+
+                    if (permission === "granted") {
+                        statusText.innerHTML = "Tebrikler! Cihazınız tescil ediliyor...";
+                        setTimeout(showSuccess, 1500);
+                    } else {
+                        showFixGuide();
+                    }
+                } catch (err) {
+                    console.error(err);
+                    statusText.innerHTML = "Hata: " + (err.message || "Bilinmeyen hata");
+                    btn.disabled = false;
+                }
+            };
+
+            // Eğer zaten aboneyse otomatik başarı göster
+            OneSignal.push(async function() {
+                const isSubscribed = await OneSignal.User.PushSubscription.getId();
+                if (isSubscribed) {
+                    showSuccess();
+                }
+            });
+        });
+
+        function showSuccess() {
+            document.getElementById('main-card').innerHTML = `
+                <div style="color:#2ecc71; font-size:60px;">✅</div>
+                <h2 style="color:#2ecc71; margin-top:10px;">Kayıt Başarılı!</h2>
+                <p>Duyuruları ve maaş bildirimlerini alacaksınız.</p>
+                <button onclick="window.close()" style="padding:15px 30px; background:#2ecc71; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold; width:100%; margin-top:20px;">SİSTEME GERİ DÖN</button>
+            `;
+        }
+
+        function showFixGuide() {
+            document.getElementById('main-card').innerHTML = `
+                <h3 style="color:#e74c3c;">⚠️ Bildirimler Engellenmiş</h3>
+                <p style="text-align:left; font-size:14px;">Tarayıcınız bildirimleri engelliyor. Lütfen düzeltin:</p>
+                <div style="background:#fff5f5; padding:15px; border-radius:10px; text-align:left; border:1px solid #fab1a0;">
+                    <b>1.</b> Adres çubuğundaki kilit simgesine dokunun.<br>
+                    <b>2.</b> "Bildirimler" > "İzin Ver" seçin.<br>
+                    <b>3.</b> Sayfayı yenileyin.
+                </div>
+                <button onclick="location.reload()" style="margin-top:20px; padding:12px; background:#3498db; color:white; border:none; border-radius:8px; cursor:pointer; width:100%;">YENİLE VE TEKRAR DENE</button>
+            `;
+        }
+    </script>
 </body>
 </html>
